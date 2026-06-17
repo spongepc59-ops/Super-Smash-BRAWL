@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Knockback Kings Deluxe</title>
+<style>
+body{margin:0;overflow:hidden;background:#0f172a;color:white;font-family:Arial}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;} resize(); onresize=resize;
+
+let state="select";
+const keys={}; onkeydown=e=>keys[e.key]=true; onkeyup=e=>keys[e.key]=false;
+
+const chars=[
+{name:"Blaze",c:"#ff6b35",speed:0.8,jump:14,power:1.1},
+{name:"Volt",c:"#00d4ff",speed:1,jump:13,power:1},
+{name:"Titan",c:"#a78bfa",speed:0.6,jump:11,power:1.5}
+];
+let selected=0;
+
+class Fighter{
+ constructor(x,char){
+  Object.assign(this,char);
+  this.x=x; this.y=300; this.vx=0; this.vy=0;
+  this.w=40; this.h=60; this.hp=100; this.lives=3;
+  this.grounded=false; this.attackCd=0; this.anim=0;
+ }
+ update(left,right,jump,atk){
+  if(keys[left]) this.vx-=this.speed;
+  if(keys[right]) this.vx+=this.speed;
+  if(keys[jump]&&this.grounded){this.vy=-this.jump;}
+  if(keys[atk]&&this.attackCd<=0){this.attackCd=25;}
+  this.attackCd--;
+  this.vy+=0.7;
+  this.x+=this.vx; this.y+=this.vy;
+  this.vx*=0.9;
+  const floor=canvas.height-120;
+  if(this.y>floor){this.y=floor;this.vy=0;this.grounded=true}else this.grounded=false;
+  this.anim+=0.15;
+ }
+ draw(){
+  ctx.save();
+  ctx.translate(this.x,this.y);
+  let bounce=Math.sin(this.anim)*3;
+  ctx.fillStyle=this.c;
+  ctx.fillRect(-20,-60+bounce,40,60);
+  ctx.beginPath();
+  ctx.arc(0,-75+bounce,15,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+ }
+}
+
+function hit(a,b){
+ let d=Math.hypot(a.x-b.x,a.y-b.y);
+ if(a.attackCd===24 && d<90){
+   b.hp-=10*a.power;
+   b.vx+=(b.x>a.x?8:-8)*a.power;
+   b.vy=-6*a.power;
+ }
+}
+
+let p1,p2;
+function startGame(){
+ p1=new Fighter(250,chars[selected]);
+ p2=new Fighter(850,chars[(selected+1)%chars.length]);
+ state="game";
+}
+
+function respawn(p,x){
+ p.x=x;p.y=250;p.vx=p.vy=0;p.hp=100;
+ p.lives--;
+}
+
+function drawSelect(){
+ ctx.fillStyle="white";
+ ctx.font="50px Arial";
+ ctx.fillText("KNOCKBACK KINGS DELUXE",80,100);
+ chars.forEach((c,i)=>{
+   ctx.fillStyle=c.c;
+   ctx.fillRect(120+i*220,220,120,120);
+   ctx.strokeStyle=i===selected?"white":"transparent";
+   ctx.lineWidth=5; ctx.strokeRect(120+i*220,220,120,120);
+   ctx.fillStyle="white";
+   ctx.fillText(c.name,110+i*220,390);
+ });
+ ctx.fillText("← → Select   ENTER Start",80,500);
+ if(keys["ArrowRight"]){selected=(selected+1)%chars.length; keys["ArrowRight"]=false;}
+ if(keys["ArrowLeft"]){selected=(selected+chars.length-1)%chars.length; keys["ArrowLeft"]=false;}
+ if(keys["Enter"]){startGame();}
+}
+
+function drawGame(){
+ ctx.fillStyle="#13213d"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ // floating platforms
+ ctx.fillStyle="#64748b";
+ ctx.fillRect(canvas.width/2-200,canvas.height-80,400,20);
+ ctx.fillRect(canvas.width/2-320,canvas.height-220,140,16);
+ ctx.fillRect(canvas.width/2+180,canvas.height-220,140,16);
+
+ p1.update("a","d","w","f");
+ p2.update("ArrowLeft","ArrowRight","ArrowUp","/");
+
+ hit(p1,p2); hit(p2,p1);
+
+ if(p1.y>canvas.height+200||p1.x<-200||p1.x>canvas.width+200) respawn(p1,250);
+ if(p2.y>canvas.height+200||p2.x<-200||p2.x>canvas.width+200) respawn(p2,850);
+
+ p1.draw(); p2.draw();
+
+ ctx.fillStyle="white";
+ ctx.font="24px Arial";
+ ctx.fillText(`P1 ${p1.name} HP:${Math.max(0,p1.hp.toFixed(0))} Lives:${p1.lives}`,20,40);
+ ctx.fillText(`P2 ${p2.name} HP:${Math.max(0,p2.hp.toFixed(0))} Lives:${p2.lives}`,canvas.width-320,40);
+
+ if(p1.hp<=0) respawn(p1,250);
+ if(p2.hp<=0) respawn(p2,850);
+
+ if(p1.lives<=0||p2.lives<=0){
+   ctx.font="70px Arial";
+   ctx.fillText((p1.lives<=0?"P2":"P1")+" WINS!",canvas.width/2-180,180);
+ }
+}
+
+function loop(){
+ requestAnimationFrame(loop);
+ if(state==="select") drawSelect();
+ else drawGame();
+}
+loop();
+</script>
+</body>
+</html>
