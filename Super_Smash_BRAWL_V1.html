@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Knockback Kings</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:Arial;overflow:hidden}
+#ui{position:absolute;top:10px;left:10px;font-size:20px}
+canvas{display:block}
+</style>
+</head>
+<body>
+<div id="ui">P1 Damage: <span id="d1">0</span>% | P2 Damage: <span id="d2">0</span>%<br>
+Controls: P1 A/D/W/F | P2 ←/→/↑//</div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+function resize(){c.width=innerWidth;c.height=innerHeight}resize();onresize=resize;
+const keys={};onkeydown=e=>keys[e.key]=1;onkeyup=e=>keys[e.key]=0;
+
+class P{
+constructor(px,col,left,right,jump,atk){
+this.x=px;this.y=300;this.vx=0;this.vy=0;this.c=col;
+this.left=left;this.right=right;this.jump=jump;this.atk=atk;
+this.dmg=0;this.r=20;this.stock=3;
+}
+update(){
+if(keys[this.left]) this.vx-=0.5;
+if(keys[this.right]) this.vx+=0.5;
+if(keys[this.jump] && this.g){this.vy=-12;this.g=0;}
+this.vy+=0.6; this.x+=this.vx; this.y+=this.vy;
+this.vx*=0.9;
+if(this.y>500){this.y=500;this.vy=0;this.g=1;}
+}
+draw(){
+x.fillStyle=this.c;
+x.beginPath();x.arc(this.x,this.y,this.r,0,7);x.fill();
+}
+}
+const p1=new P(250,"cyan","a","d","w","f");
+const p2=new P(650,"orange","ArrowLeft","ArrowRight","ArrowUp","/");
+
+function attack(a,b){
+let dx=b.x-a.x, dy=b.y-a.y;
+if(Math.hypot(dx,dy)<60){
+let k=8+b.dmg*0.08;
+b.vx+=(dx>0?1:-1)*k;
+b.vy=-k*0.4;
+b.dmg+=10;
+}
+}
+
+function reset(p,sx){p.x=sx;p.y=300;p.vx=p.vy=0;p.dmg=0;}
+function loop(){
+requestAnimationFrame(loop);
+x.fillStyle="#1a1a1a";x.fillRect(0,0,c.width,c.height);
+x.fillStyle="#555";x.fillRect(c.width/2-250,520,500,20);
+
+p1.update(); p2.update();
+if(keys["f"]) attack(p1,p2);
+if(keys["/"]) attack(p2,p1);
+
+[p1,p2].forEach((p,i)=>{
+ if(p.x<-200||p.x>c.width+200||p.y>c.height+200){
+   p.stock--;
+   reset(p,i?650:250);
+ }
+});
+
+p1.draw(); p2.draw();
+
+document.getElementById("d1").textContent=Math.floor(p1.dmg);
+document.getElementById("d2").textContent=Math.floor(p2.dmg);
+
+x.fillStyle="white";
+x.fillText("P1 Stocks: "+p1.stock,20,80);
+x.fillText("P2 Stocks: "+p2.stock,c.width-150,80);
+
+if(p1.stock<=0||p2.stock<=0){
+x.font="60px Arial";
+x.fillText((p1.stock<=0?"P2":"P1")+" WINS!",c.width/2-150,c.height/2);
+}
+}
+loop();
+</script>
+</body>
+</html>
